@@ -22,7 +22,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,10 +33,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.api.UserApi
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+
+data class LoginReqModel(
+    var username: String,
+    var password: String,
+)
+
+data class UserModel(
+    var profile: LoginReqModel
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,22 +69,54 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+fun handleLogin(username: String, password: String) {
+    val retrofit = Retrofit.Builder()
+        .baseUrl("https://klikyou-das-api.demo-kota.com/api/v1/")
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    val api = retrofit.create(UserApi::class.java)
+    val data = object {
+        val username = username
+        val password = password
+    }
+
+    val call: Call<LoginReqModel?>? = api.login(data);
+
+    call!!.enqueue(object: Callback<LoginReqModel?> {
+        override fun onResponse(call: Call<LoginReqModel?>, response: Response<LoginReqModel?>) {
+            Log.d("@Main@", "success!" + response)
+            if(response.isSuccessful) {
+
+            }
+        }
+
+        override fun onFailure(call: Call<LoginReqModel?>, t: Throwable) {
+            Log.e("Main", "Failed mate " + t.message.toString())
+        }
+    })
+
+}
+
 @Composable
 fun Greeting() {
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by rememberSaveable { mutableStateOf(false) }
 
-    fun handleLogin() {
-
+    var username by remember {
+        mutableStateOf("superadmin@klikyou.com")
     }
+    var password by remember {
+        mutableStateOf("KI1k..YOu/?-2024")
+    }
+
+
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
     
     Scaffold(
         bottomBar = {
             BottomAppBar(
                 containerColor = Color.White,
             ) {
-                Button(onClick = { handleLogin() },
+                Button(onClick = { handleLogin(username, password) },
                     modifier = Modifier
                         .fillMaxWidth(),) {
                     Text(
