@@ -37,14 +37,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.api.UserApi
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
+
 data class LoginReqModel(
-    var username: String,
+    var email: String,
     var password: String,
 )
 
@@ -69,29 +72,32 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-fun handleLogin(username: String, password: String) {
+fun handleLogin(email: String, password: String, setIsLoading: (Boolean) -> Unit) {
+    setIsLoading(true)
+
+    val interceptor = HttpLoggingInterceptor()
+    interceptor.setLevel(HttpLoggingInterceptor.Level.BODY)
+    val client: OkHttpClient = OkHttpClient.Builder().addInterceptor(interceptor).build()
+
     val retrofit = Retrofit.Builder()
         .baseUrl("https://klikyou-das-api.demo-kota.com/api/v1/")
+        .client(client)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
     val api = retrofit.create(UserApi::class.java)
-    val data = object {
-        val username = username
-        val password = password
-    }
+    val data = LoginReqModel(email, password)
 
-    val call: Call<LoginReqModel?>? = api.login(data);
+    val call: Call<Any?>? = api.login(data);
 
-    call!!.enqueue(object: Callback<LoginReqModel?> {
-        override fun onResponse(call: Call<LoginReqModel?>, response: Response<LoginReqModel?>) {
-            Log.d("@Main@", "success!" + response)
-            if(response.isSuccessful) {
-
-            }
+    call!!.enqueue(object: Callback<Any?> {
+        override fun onResponse(call: Call<Any?>, response: Response<Any?>) {
+            Log.i("@response", response.body().toString())
+            setIsLoading(false)
         }
 
-        override fun onFailure(call: Call<LoginReqModel?>, t: Throwable) {
+        override fun onFailure(call: Call<Any?>, t: Throwable) {
+            setIsLoading(false)
             Log.e("Main", "Failed mate " + t.message.toString())
         }
     })
@@ -101,12 +107,14 @@ fun handleLogin(username: String, password: String) {
 @Composable
 fun Greeting() {
 
-    var username by remember {
+    var email by remember {
         mutableStateOf("superadmin@klikyou.com")
     }
     var password by remember {
-        mutableStateOf("KI1k..YOu/?-2024")
+        mutableStateOf("Kl1k..Y0u/?-2024")
     }
+
+    val (isLoading, setIsLoading) = remember { mutableStateOf(false) }
 
 
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
@@ -116,31 +124,36 @@ fun Greeting() {
             BottomAppBar(
                 containerColor = Color.White,
             ) {
-                Button(onClick = { handleLogin(username, password) },
+                Button(
+                    onClick = { handleLogin(email, password, setIsLoading) },
                     modifier = Modifier
-                        .fillMaxWidth(),) {
+                        .fillMaxWidth(),
+                    enabled = !isLoading
+                ) {
                     Text(
-                        text = "LOGIN",
+                        text = if(isLoading) "LOADING..." else "LOGIN",
                     )
                 }
 
             }
         },
     ) {innerPadding ->
-        Column(modifier = Modifier
-            .padding(innerPadding)
-            .padding(vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),) {
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
 
             OutlinedTextField(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp),
-                value = username,
-                onValueChange = { username = it },
-                label = { Text("Username") },
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("email") },
                 placeholder = {
-                    Text(text = "Type username")
+                    Text(text = "Type email")
                 },
                 singleLine = true
             )
